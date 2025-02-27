@@ -838,6 +838,10 @@
     }
     
     restartButton.addEventListener('click', initGame);
+    restartButton.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      initGame();
+    });
     
     // Update the resize event listener to adjust the game area based on both width and height.
     window.addEventListener('resize', function() {
