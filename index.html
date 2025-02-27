@@ -1058,8 +1058,8 @@
           balls.push({
             x: centerX,
             y: centerY,
-            speedX: Math.cos(angle) * ballSpeed,
-            speedY: Math.sin(angle) * ballSpeed
+            speedX: Math.cos(angle) * baseSpeed, // Start at baseSpeed always
+            speedY: Math.sin(angle) * baseSpeed
           });
         }
       } else if (type === "reverseControls") {
