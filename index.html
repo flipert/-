@@ -812,7 +812,12 @@
     
     function updateSpeedIndicator() {
       const maxBars = 8;
-      const activeBars = Math.round(((ballSpeed - baseSpeed) / (maxSpeed - baseSpeed)) * maxBars);
+      let fraction = (ballSpeed - baseSpeed) / (maxSpeed - baseSpeed);
+      // Clamp fraction between 0 and 1, ensuring a reduced ballSpeed shows 0 bars, and not negative values.
+      if (fraction < 0) fraction = 0;
+      if (fraction > 1) fraction = 1;
+      const activeBars = Math.round(fraction * maxBars);
+
       const bars = speedIndicator.querySelectorAll('.speed-bar');
       for (let i = 0; i < bars.length; i++) {
         if (i < activeBars) {
