@@ -1,655 +1,332 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quantum Electron Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            touch-action: none;
-            background-color: #1a1a2e;
-            font-family: Arial, sans-serif;
-        }
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100vh;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 10;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-            text-align: center;
-        }
-        .modal-content {
-            background-color: #2a2a4a;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 80%;
-        }
-        .modal h2 {
-            margin-top: 0;
-            color: #5dadec;
-        }
-        .modal p {
-            margin-bottom: 20px;
-        }
-        .modal button {
-            background-color: #5dadec;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .score {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: white;
-            font-size: 20px;
-            z-index: 5;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Random Conversations Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; font-family: monospace; color: #fff; }
+    canvas { display: block; image-rendering: pixelated; }
+    #dialogueBox {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      border: 2px solid #fff;
+      padding: 20px;
+      width: 80%;
+      max-width: 600px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .dialogue-option {
+      margin-top: 10px;
+      padding: 5px;
+      background: #222;
+      border: 1px solid #fff;
+      cursor: pointer;
+    }
+    #talkPrompt {
+      position: absolute;
+      font-size: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 2px 5px;
+      border: 1px solid #fff;
+    }
+  </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="scoreDisplay" class="score">Puntuación: 0</div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="dialogueBox" style="display:none;"></div>
+  <div id="talkPrompt" style="display:none;">E to talk</div>
+  <script>
+    // Set up canvas and context
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     
-    <div id="gameOverModal" class="modal">
-        <div class="modal-content">
-            <h2>¡Game Over!</h2>
-            <p>Tu electrón ha chocado con un positrón.</p>
-            <button id="restartButton">Reiniciar</button>
-        </div>
-    </div>
+    // Global game state: 'game' or 'dialogue'
+    let gameState = 'game';
     
-    <div id="levelCompleteModal" class="modal">
-        <div class="modal-content">
-            <h2>¡Nivel Completado!</h2>
-            <p>Tu electrón ha encontrado un núcleo de hidrógeno.</p>
-            <div id="elementInfo">
-                <h3>Hidrógeno (H)</h3>
-                <p>Número Atómico: 1</p>
-                <p>El hidrógeno es el elemento químico más ligero y abundante del universo. Constituye aproximadamente el 75% de la materia visible.</p>
-            </div>
-            <button id="nextLevelButton">Siguiente Nivel</button>
-        </div>
-    </div>
+    // Player object
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 16,
+      speed: 2
+    };
     
-    <script>
-        // Configuración del juego
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const gameOverModal = document.getElementById('gameOverModal');
-        const levelCompleteModal = document.getElementById('levelCompleteModal');
-        const restartButton = document.getElementById('restartButton');
-        const nextLevelButton = document.getElementById('nextLevelButton');
-        
-        // Asegurar que el canvas llene toda la pantalla
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+    // Camera for infinite world simulation
+    let camera = { x: 0, y: 0 };
+    
+    // Vocabulary: 250 words to be used for generating dialogue.
+    const vocabulary = [
+      "hello", "goodbye", "yes", "no", "maybe", "please", "thanks", "sorry", "welcome", "friend",
+      "enemy", "ally", "stranger", "hero", "villain", "brave", "bold", "cunning", "wise", "curious",
+      "quest", "journey", "adventure", "danger", "challenge", "mystery", "secret", "fate", "destiny", "fortune",
+      "magic", "power", "spell", "curse", "charm", "potion", "elixir", "artifact", "relic", "rune",
+      "sword", "shield", "bow", "arrow", "dagger", "spear", "armor", "battle", "combat", "fight",
+      "win", "lose", "victory", "defeat", "triumph", "struggle", "clash", "duel", "storm", "calm",
+      "light", "dark", "shadow", "flame", "ember", "frost", "wind", "earth", "water", "fire",
+      "sky", "star", "moon", "sun", "dawn", "dusk", "twilight", "horizon", "cloud", "mist",
+      "castle", "dungeon", "forest", "cave", "labyrinth", "tower", "bridge", "gate", "village", "kingdom",
+      "road", "path", "trail", "map", "guide", "sign", "door", "key", "lock", "treasure",
+      "coin", "gold", "silver", "jewel", "gem", "wealth", "trade", "bargain", "offer", "deal",
+      "whisper", "shout", "cry", "laugh", "smile", "frown", "speak", "listen", "voice", "echo",
+      "dream", "nightmare", "vision", "prophecy", "omen", "hint", "riddle", "puzzle", "enigma", "tale",
+      "story", "legend", "myth", "fable", "lore", "history", "memory", "truth", "lie", "promise",
+      "oath", "vow", "mercy", "chance", "risk", "luck", "hope", "fear", "honor", "glory",
+      "the", "a", "an", "and", "but", "or", "if", "then", "when", "where",
+      "who", "what", "why", "how", "with", "without", "in", "on", "at", "by",
+      "for", "from", "of", "is", "are", "was", "were", "be", "been", "being",
+      "do", "does", "did", "have", "has", "had", "will", "would", "can", "could",
+      "shall", "should", "may", "might", "must", "go", "come", "see", "look", "hear",
+      "run", "walk", "chat", "answer", "ask", "say", "tell", "murmur", "explain", "describe",
+      "reveal", "hide", "seek", "explore", "discover", "find", "uncover", "follow", "lead", "return",
+      "begin", "start", "finish", "complete", "create", "build", "break", "mend", "fix", "open",
+      "close", "enter", "exit", "move", "stop", "wait", "hurry", "sprint", "jump", "climb",
+      "fall", "fly", "drive", "guide", "protect", "defend", "attack", "strike", "conquer", "rule"
+    ];
+    
+    // Categorized words (subsets from our vocabulary)
+    const greetings = ["hello", "welcome"];
+    const roles = ["friend", "hero", "ally", "villain", "stranger"];
+    const questWords = ["quest", "journey", "adventure", "mystery", "secret", "fate", "destiny", "fortune"];
+    const actionVerbs = ["seek", "find", "explore", "protect", "challenge", "follow", "return", "begin", "start", "finish", "discover", "build", "attack", "conquer", "rule"];
+    const adjectives = ["brave", "bold", "cunning", "wise", "curious", "dark", "light", "calm"];
+    
+    // NPC dialogue templates
+    const npcTemplates = [
+      "{greeting}, {role}. I {verb} a {adjective} {quest}.",
+      "{role}, your {quest} is {adjective} and {adjective2}.",
+      "I {verb} to {verb2} the {quest} of a {role}.",
+      "Do you {verb} the {quest} with a {adjective} {role}?",
+      "This {quest} will {verb} your {role} to {verb2}."
+    ];
+    
+    // Player dialogue option templates
+    const playerTemplates = [
+      "Yes, I will {verb} the {quest}.",
+      "No, I {verb} not the {quest}.",
+      "Maybe, I should {verb} and {verb2} the {quest}.",
+      "I {verb} your {quest} and will {verb2}."
+    ];
+    
+    // Helper: choose a random element from an array.
+    function randomChoice(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    
+    // Replace tokens in templates with words from the categorized arrays.
+    function generateSentence(template) {
+      return template.replace(/{(\w+)}/g, (match, token) => {
+        switch(token) {
+          case "greeting": return randomChoice(greetings);
+          case "role": return randomChoice(roles);
+          case "quest": return randomChoice(questWords);
+          case "verb": return randomChoice(actionVerbs);
+          case "verb2": return randomChoice(actionVerbs);
+          case "adjective": return randomChoice(adjectives);
+          case "adjective2": return randomChoice(adjectives);
+          default: return "";
         }
-        
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-        
-        // Variables del juego
-        let gameRunning = false;
-        let score = 0;
-        let gridOffset = 0;
-        let gridSize = 30;
-        let gridSpeed = 2;
-        let originalGridSpeed = 2;
-        
-        // Electrón
-        const electron = {
-            x: canvas.width / 2,
-            y: canvas.height - 150,
-            radius: 25,
-            color: '#00ffff',
-            invincible: false,
-            trail: [],
-            trailLength: 10,
-            update: function() {
-                // Agregar posición actual a la estela
-                this.trail.push({x: this.x, y: this.y});
-                
-                // Limitar el tamaño de la estela
-                if (this.trail.length > this.trailLength) {
-                    this.trail.shift();
-                }
-            },
-            draw: function() {
-                // Dibujar la estela
-                for (let i = 0; i < this.trail.length; i++) {
-                    const alpha = i / this.trail.length;
-                    ctx.beginPath();
-                    ctx.arc(this.trail[i].x, this.trail[i].y, this.radius * (i / this.trail.length), 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
-                    ctx.fill();
-                }
-                
-                // Dibujar el electrón
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                
-                if (this.invincible) {
-                    // Efecto de brillo cuando está invencible
-                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2);
-                    gradient.addColorStop(0, 'white');
-                    gradient.addColorStop(0.5, this.color);
-                    gradient.addColorStop(1, 'rgba(93, 173, 236, 0)');
-                    ctx.fillStyle = gradient;
-                    
-                    // Dibujar un aura
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                    ctx.fill();
-                } else {
-                    // Añadir un borde brillante para hacerlo más visible
-                    ctx.fillStyle = this.color;
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = 'white';
-                }
-                
-                ctx.fill();
-            }
-        };
-        
-        // Clases para los elementos del juego
-        class Positron {
-            constructor(type) {
-                this.type = type || Math.floor(Math.random() * 4); // 0: estático, 1: movimiento lateral, 2: giro, 3: giro y movimiento
-                this.width = (this.type === 0) ? 30 : 50;
-                this.height = (this.type === 0) ? 30 : (Math.random() > 0.5 ? 30 : 80);
-                this.x = Math.random() * (canvas.width - this.width);
-                this.y = -this.height;
-                this.speed = 1 + Math.random() * 2;
-                this.angle = 0;
-                this.rotationSpeed = (this.type >= 2) ? (Math.random() * 0.1) - 0.05 : 0;
-                this.lateralSpeed = (this.type === 1 || this.type === 3) ? (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random()) : 0;
-                this.lateralRange = canvas.width / 3;
-                this.initialX = this.x;
-            }
-            
-            update() {
-                this.y += this.speed * gridSpeed;
-                
-                // Actualizar ángulo si gira
-                if (this.type >= 2) {
-                    this.angle += this.rotationSpeed;
-                }
-                
-                // Actualizar posición lateral si se mueve
-                if (this.type === 1 || this.type === 3) {
-                    this.x = this.initialX + Math.sin(this.y / 50) * this.lateralRange;
-                    
-                    // Asegurar que no se salga de la pantalla
-                    if (this.x < 0) this.x = 0;
-                    if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
-                }
-                
-                return this.y > canvas.height;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-                ctx.rotate(this.angle);
-                
-                // Dibujar el cuerpo negro del positrón
-                ctx.fillStyle = 'black';
-                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                
-                // Dibujar el borde arcoíris
-                const borderWidth = 3;
-                const gradient = ctx.createLinearGradient(-this.width / 2, -this.height / 2, this.width / 2, this.height / 2);
-                gradient.addColorStop(0, "red");
-                gradient.addColorStop(0.2, "orange");
-                gradient.addColorStop(0.4, "yellow");
-                gradient.addColorStop(0.6, "green");
-                gradient.addColorStop(0.8, "blue");
-                gradient.addColorStop(1, "purple");
-                
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = borderWidth;
-                ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
-                
-                ctx.restore();
-            }
-            
-            checkCollision(electron) {
-                if (electron.invincible) return false;
-                
-                // Para formas rotadas, usamos una aproximación de la distancia
-                const centerX = this.x + this.width / 2;
-                const centerY = this.y + this.height / 2;
-                
-                // Distancia entre los centros
-                const dx = electron.x - centerX;
-                const dy = electron.y - centerY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Tamaño efectivo del positrón (considerando rotación)
-                const effectiveRadius = Math.max(this.width, this.height) / 1.5;
-                
-                return distance < (effectiveRadius + electron.radius);
-            }
-        }
-        
-        class Photon {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = -30;
-                this.width = 20;
-                this.height = 10;
-                this.angle = Math.random() * Math.PI * 2; // Ángulo aleatorio
-                this.speed = 3 + Math.random() * 3;
-                this.amplitude = 5;
-                this.frequency = 0.1;
-                this.time = 0;
-            }
-            
-            update() {
-                // Mover en línea recta según el ángulo
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle) * this.speed;
-                
-                // Para el efecto de onda
-                this.time += 0.1;
-                
-                return this.y > canvas.height || this.x < -this.width || this.x > canvas.width;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle);
-                
-                // Dibujar onda
-                ctx.beginPath();
-                ctx.moveTo(-this.width / 2, 0);
-                
-                for (let i = -this.width / 2; i <= this.width / 2; i++) {
-                    ctx.lineTo(i, Math.sin(i * this.frequency + this.time) * this.amplitude);
-                }
-                
-                ctx.strokeStyle = 'yellow';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                
-                // Brillo central
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 10);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-                gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
-                
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                ctx.restore();
-            }
-            
-            checkCollision(electron) {
-                const dx = this.x - electron.x;
-                const dy = this.y - electron.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                return distance < (this.width / 2 + electron.radius);
-            }
-        }
-        
-        class Atom {
-            constructor() {
-                this.x = canvas.width / 2;
-                this.y = -50;
-                this.radius = 30;
-                this.electronOrbitRadius = 60;
-                this.electronOrbitAngle = 0;
-                this.electronCapured = false;
-            }
-            
-            update() {
-                this.y += gridSpeed;
-                
-                if (this.electronCapured) {
-                    this.electronOrbitAngle += 0.05;
-                }
-                
-                return this.y > canvas.height;
-            }
-            
-            draw() {
-                // Dibujar núcleo
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, '#ff6b6b');
-                gradient.addColorStop(1, '#c44d56');
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                // Órbita del electrón
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.electronOrbitRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.setLineDash([5, 5]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                // Dibujar electrón capturado en órbita
-                if (this.electronCapured) {
-                    const electronX = this.x + Math.cos(this.electronOrbitAngle) * this.electronOrbitRadius;
-                    const electronY = this.y + Math.sin(this.electronOrbitAngle) * this.electronOrbitRadius;
-                    
-                    ctx.beginPath();
-                    ctx.arc(electronX, electronY, 15, 0, Math.PI * 2);
-                    ctx.fillStyle = '#5dadec';
-                    ctx.fill();
-                }
-            }
-            
-            checkCollision(electron) {
-                const dx = this.x - electron.x;
-                const dy = this.y - electron.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                return distance < (this.radius + electron.radius);
-            }
-        }
-        
-        // Arreglos para almacenar elementos del juego
-        let positrons = [];
-        let photons = [];
-        let atoms = [];
-        let nextObstacleTime = 0;
-        let obstacleInterval = 1500; // ms
-        let photonInterval = 5000; // ms
-        let nextPhotonTime = 0;
-        let obstacleCount = 0;
-        let maxObstacles = 10; // Después de 10 obstáculos aparece el átomo
-        let atomSpawned = false;
-        
-        let lastTime = 0;
-        let invincibleTime = 0;
-        let invincibleDuration = 3000; // 3 segundos
-        
-        // Manejo de entrada táctil
-        let touchStartX = 0;
-        let isTouching = false;
-        
-        canvas.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            electron.x = touch.clientX;
-            isTouching = true;
+      });
+    }
+    
+    // NPC constructor – each NPC gets a randomly generated dialogue.
+    function NPC(x, y) {
+      this.x = x;
+      this.y = y;
+      this.size = 16;
+      this.dialogue = generateSentence(randomChoice(npcTemplates));
+    }
+    
+    // Create an array of NPCs spread across the world.
+    let npcs = [];
+    for(let i = 0; i < 20; i++){
+      let npcX = Math.random() * 2000 - 1000;
+      let npcY = Math.random() * 2000 - 1000;
+      npcs.push(new NPC(npcX, npcY));
+    }
+    
+    // Pickup items (coins, potions, keys)
+    function Pickup(x, y, type) {
+      this.x = x;
+      this.y = y;
+      this.size = 10;
+      this.type = type;
+    }
+    let pickups = [];
+    for(let i = 0; i < 30; i++){
+      let pX = Math.random() * 2000 - 1000;
+      let pY = Math.random() * 2000 - 1000;
+      let types = ["coin", "potion", "key"];
+      pickups.push(new Pickup(pX, pY, randomChoice(types)));
+    }
+    
+    // Enemies – simple red blocks that slowly chase the player.
+    function Enemy(x, y) {
+      this.x = x;
+      this.y = y;
+      this.size = 16;
+      this.speed = 1;
+    }
+    let enemies = [];
+    for(let i = 0; i < 10; i++){
+      let eX = Math.random() * 2000 - 1000;
+      let eY = Math.random() * 2000 - 1000;
+      enemies.push(new Enemy(eX, eY));
+    }
+    
+    // Dialogue box elements
+    const dialogueBox = document.getElementById('dialogueBox');
+    const talkPrompt = document.getElementById('talkPrompt');
+    
+    // Current dialogue state variables
+    let currentNPC = null;
+    let currentDialogueOptions = [];
+    
+    // Keyboard handling
+    let keys = {};
+    window.addEventListener('keydown', function(e) {
+      keys[e.key] = true;
+      if(gameState === 'dialogue' && e.key === "Escape"){
+        endDialogue();
+      }
+      if(gameState === 'game' && e.key.toLowerCase() === 'e' && currentNPC) {
+        startDialogue(currentNPC);
+      }
+    });
+    window.addEventListener('keyup', function(e) {
+      keys[e.key] = false;
+    });
+    
+    // Begin dialogue mode with the selected NPC.
+    function startDialogue(npc) {
+      gameState = 'dialogue';
+      let npcDialogue = npc.dialogue;
+      currentDialogueOptions = [
+        generateSentence(randomChoice(playerTemplates)),
+        generateSentence(randomChoice(playerTemplates))
+      ];
+      dialogueBox.innerHTML = "<p>" + npcDialogue + "</p>";
+      currentDialogueOptions.forEach(option => {
+        let div = document.createElement("div");
+        div.className = "dialogue-option";
+        div.innerText = option;
+        div.addEventListener('click', function() {
+          // For simplicity, selecting an option ends dialogue and updates NPC dialogue.
+          npc.dialogue = generateSentence(randomChoice(npcTemplates));
+          endDialogue();
         });
-        
-        canvas.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-            if (isTouching) {
-                const touch = e.touches[0];
-                electron.x = touch.clientX;
-            }
-        });
-        
-        canvas.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            isTouching = false;
-        });
-        
-        // Soporte para ratón (para pruebas en escritorio)
-        let isMouseDown = false;
-        
-        canvas.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            isMouseDown = true;
-            electron.x = e.clientX;
-        });
-        
-        canvas.addEventListener('mousemove', function(e) {
-            e.preventDefault();
-            if (isMouseDown) {
-                electron.x = e.clientX;
-            }
-        });
-        
-        canvas.addEventListener('mouseup', function(e) {
-            e.preventDefault();
-            isMouseDown = false;
-        });
-        
-        // Función para dibujar la cuadrícula
-        function drawGrid() {
-            ctx.strokeStyle = 'rgba(93, 173, 236, 0.2)';
-            ctx.lineWidth = 1;
-            
-            // Líneas verticales
-            for (let x = 0; x < canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            
-            // Líneas horizontales con offset para movimiento
-            for (let y = gridOffset; y < canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-            
-            // Actualizar offset para movimiento
-            gridOffset = (gridOffset + gridSpeed) % gridSize;
+        dialogueBox.appendChild(div);
+      });
+      dialogueBox.style.display = "block";
+    }
+    
+    // End dialogue mode and return to the game.
+    function endDialogue() {
+      gameState = 'game';
+      dialogueBox.style.display = "none";
+      dialogueBox.innerHTML = "";
+      currentNPC = null;
+    }
+    
+    // Update game objects.
+    function update() {
+      if(gameState === 'game') {
+        if(keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
+        if(keys["ArrowDown"] || keys["s"]) player.y += player.speed;
+        if(keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+        if(keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+      }
+      // Center camera on the player.
+      camera.x = player.x - canvas.width / 2;
+      camera.y = player.y - canvas.height / 2;
+      
+      // Enemies move toward the player.
+      enemies.forEach(enemy => {
+        let dx = player.x - enemy.x;
+        let dy = player.y - enemy.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist > 0) {
+          enemy.x += (dx/dist) * enemy.speed;
+          enemy.y += (dy/dist) * enemy.speed;
         }
-        
-        // Iniciar el juego
-        function startGame() {
-            gameRunning = true;
-            score = 0;
-            scoreDisplay.textContent = `Puntuación: ${score}`;
-            gridSpeed = originalGridSpeed;
-            positrons = [];
-            photons = [];
-            atoms = [];
-            nextObstacleTime = 0;
-            nextPhotonTime = 0;
-            obstacleCount = 0;
-            atomSpawned = false;
-            electron.invincible = false;
-            electron.x = canvas.width / 2;
-            electron.trail = [];
-            
-            // Mostrar instrucciones iniciales
-            const instructions = document.createElement('div');
-            instructions.style.position = 'fixed';
-            instructions.style.top = '50%';
-            instructions.style.left = '50%';
-            instructions.style.transform = 'translate(-50%, -50%)';
-            instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            instructions.style.color = 'white';
-            instructions.style.padding = '20px';
-            instructions.style.borderRadius = '10px';
-            instructions.style.textAlign = 'center';
-            instructions.style.zIndex = '100';
-            instructions.innerHTML = `
-                <h2>Instrucciones</h2>
-                <p>PC: Mantén presionado el botón del ratón y muévelo para controlar el electrón</p>
-                <p>Móvil: Toca y arrastra para controlar el electrón</p>
-                <p>Haz clic para comenzar</p>
-            `;
-            document.body.appendChild(instructions);
-            
-            setTimeout(() => {
-                instructions.addEventListener('click', function() {
-                    document.body.removeChild(instructions);
-                    requestAnimationFrame(gameLoop);
-                });
-            }, 100);
-            
-            // Ocultar modales
-            gameOverModal.style.display = 'none';
-            levelCompleteModal.style.display = 'none';
-            
-            // El bucle de juego se iniciará al hacer clic en las instrucciones
+      });
+    }
+    
+    // Check if the player is near an NPC to show the "E to talk" prompt.
+    function checkNPCProximity() {
+      currentNPC = null;
+      npcs.forEach(npc => {
+        let dx = npc.x - player.x;
+        let dy = npc.y - player.y;
+        if(Math.sqrt(dx*dx + dy*dy) < 30) {
+          currentNPC = npc;
+          talkPrompt.style.left = (npc.x - camera.x) + "px";
+          talkPrompt.style.top = (npc.y - camera.y - 20) + "px";
+          talkPrompt.style.display = "block";
         }
-        
-        // Bucle principal del juego
-        function gameLoop(timestamp) {
-            if (!gameRunning) return;
-            
-            // Calcular delta time
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-            
-            // Limpiar canvas
-            ctx.fillStyle = '#1a1a2e';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar cuadrícula
-            drawGrid();
-            
-            // Actualizar electrón
-            electron.update();
-            
-            // Comprobar si debe generar nuevos obstáculos
-            if (timestamp > nextObstacleTime && obstacleCount < maxObstacles && !atomSpawned) {
-                positrons.push(new Positron());
-                nextObstacleTime = timestamp + obstacleInterval;
-                obstacleCount++;
-            }
-            
-            // Comprobar si debe generar fotones
-            if (timestamp > nextPhotonTime && !atomSpawned) {
-                photons.push(new Photon());
-                nextPhotonTime = timestamp + photonInterval;
-            }
-            
-            // Comprobar si debe generar el átomo
-            if (obstacleCount >= maxObstacles && !atomSpawned) {
-                atoms.push(new Atom());
-                atomSpawned = true;
-            }
-            
-            // Actualizar y dibujar positrones
-            for (let i = positrons.length - 1; i >= 0; i--) {
-                const isOffScreen = positrons[i].update();
-                
-                // Eliminar si está fuera de pantalla
-                if (isOffScreen) {
-                    positrons.splice(i, 1);
-                    score++;
-                    scoreDisplay.textContent = `Puntuación: ${score}`;
-                    continue;
-                }
-                
-                positrons[i].draw();
-                
-                // Comprobar colisión
-                if (positrons[i].checkCollision(electron)) {
-                    if (!electron.invincible) {
-                        gameOver();
-                        return;
-                    }
-                }
-            }
-            
-            // Actualizar y dibujar fotones
-            for (let i = photons.length - 1; i >= 0; i--) {
-                const isOffScreen = photons[i].update();
-                
-                // Eliminar si está fuera de pantalla
-                if (isOffScreen) {
-                    photons.splice(i, 1);
-                    continue;
-                }
-                
-                photons[i].draw();
-                
-                // Comprobar colisión
-                if (photons[i].checkCollision(electron)) {
-                    // Activar invencibilidad
-                    electron.invincible = true;
-                    invincibleTime = timestamp + invincibleDuration;
-                    
-                    // Aumentar velocidad
-                    gridSpeed = originalGridSpeed * 2;
-                    
-                    // Eliminar fotón
-                    photons.splice(i, 1);
-                }
-            }
-            
-            // Desactivar invencibilidad después de la duración
-            if (electron.invincible && timestamp > invincibleTime) {
-                electron.invincible = false;
-                gridSpeed = originalGridSpeed;
-            }
-            
-            // Actualizar y dibujar átomos
-            for (let i = atoms.length - 1; i >= 0; i--) {
-                const isOffScreen = atoms[i].update();
-                
-                // Eliminar si está fuera de pantalla
-                if (isOffScreen) {
-                    atoms.splice(i, 1);
-                    continue;
-                }
-                
-                atoms[i].draw();
-                
-                // Comprobar colisión
-                if (atoms[i].checkCollision(electron)) {
-                    atoms[i].electronCapured = true;
-                    levelComplete();
-                    return;
-                }
-            }
-            
-            // Dibujar electrón
-            electron.draw();
-            
-            // Continuar bucle
-            requestAnimationFrame(gameLoop);
-        }
-        
-        function gameOver() {
-            gameRunning = false;
-            gameOverModal.style.display = 'flex';
-        }
-        
-        function levelComplete() {
-            gameRunning = false;
-            levelCompleteModal.style.display = 'flex';
-        }
-        
-        // Event listeners para botones
-        restartButton.addEventListener('click', startGame);
-        nextLevelButton.addEventListener('click', startGame);
-        
-        // Iniciar juego
-        startGame();
-    </script>
+      });
+      if(!currentNPC) {
+        talkPrompt.style.display = "none";
+      }
+    }
+    
+    // Draw the game scene.
+    function draw() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw pickups.
+      pickups.forEach(pickup => {
+        let screenX = pickup.x - camera.x;
+        let screenY = pickup.y - camera.y;
+        if(pickup.type === "coin") ctx.fillStyle = "yellow";
+        else if(pickup.type === "potion") ctx.fillStyle = "blue";
+        else if(pickup.type === "key") ctx.fillStyle = "orange";
+        ctx.fillRect(screenX, screenY, pickup.size, pickup.size);
+      });
+      
+      // Draw enemies.
+      enemies.forEach(enemy => {
+        let screenX = enemy.x - camera.x;
+        let screenY = enemy.y - camera.y;
+        ctx.fillStyle = "red";
+        ctx.fillRect(screenX, screenY, enemy.size, enemy.size);
+      });
+      
+      // Draw NPCs.
+      npcs.forEach(npc => {
+        let screenX = npc.x - camera.x;
+        let screenY = npc.y - camera.y;
+        ctx.fillStyle = "green";
+        ctx.fillRect(screenX, screenY, npc.size, npc.size);
+      });
+      
+      // Draw the player.
+      let playerScreenX = player.x - camera.x;
+      let playerScreenY = player.y - camera.y;
+      ctx.fillStyle = "white";
+      ctx.fillRect(playerScreenX, playerScreenY, player.size, player.size);
+    }
+    
+    // Main game loop.
+    function gameLoop() {
+      update();
+      checkNPCProximity();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+    
+    // Adjust canvas on window resize.
+    window.addEventListener('resize', function(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
 </body>
 </html>
