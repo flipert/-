@@ -525,7 +525,10 @@
     }, {passive: false});
     
     window.addEventListener('touchend', function(e) {
-      // Reset vertical control flag when touch ends.
+      // When vertical control ends, update mouseAngle so the paddle remains at the last angle.
+      if (isVerticalTouch) {
+         mouseAngle = verticalAngle;
+      }
       isVerticalTouch = false;
     });
     
