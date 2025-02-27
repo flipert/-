@@ -482,6 +482,8 @@
     
     // Initialize game
     function initGame() {
+      updateGameSize();
+      
       score = 0;
       gapSize = minGapSize;
       ballSpeed = baseSpeed;
@@ -511,8 +513,6 @@
       
       updateScore();
       updateSpeedIndicator();
-      
-      // Powerups now spawn automatically every 10 levels.
       
       // Hide game over screen and start game loop
       gameOverElement.style.display = 'none';
@@ -823,16 +823,12 @@
     
     restartButton.addEventListener('click', initGame);
     
-    // Update the resize event listener to update canvas dimensions and center coordinates.
+    // Update the resize event listener to adjust the game area based on both width and height.
     window.addEventListener('resize', function() {
-      const newWidth = Math.min(500, window.innerWidth - 48);
-      if (Math.abs(canvas.width - newWidth) > 50) {
-        canvas.width = newWidth;
-        canvas.height = newWidth;
-        canvasWidth = newWidth;          // Update new width
-        canvasHeight = newWidth;         // Update new height
-        centerX = canvasWidth / 2;       // Update center X
-        centerY = canvasHeight / 2;      // Update center Y
+      const prevSize = canvas.width;
+      updateGameSize();
+      // If the size has changed significantly, reinitialize the game.
+      if (Math.abs(prevSize - canvas.width) > 10) {
         initGame();
       }
     });
@@ -1140,6 +1136,25 @@
         ctx.fill();
         ctx.restore();
       }
+    }
+
+    // ----- New function to handle dynamic game sizing -----
+    function updateGameSize() {
+      const safeHorizontalMargin = 48; // Total safe margin for left+right sides.
+      const safeVerticalMargin = 100;  // Safe area for top and bottom.
+      // Compute the new size: take the minimum of 500, available width, and available height.
+      const newSize = Math.min(500, window.innerWidth - safeHorizontalMargin, window.innerHeight - safeVerticalMargin);
+      
+      canvas.width = newSize;
+      canvas.height = newSize;
+      canvasWidth = newSize;
+      canvasHeight = newSize;
+      centerX = canvasWidth / 2;
+      centerY = canvasHeight / 2;
+      
+      // Also adjust the game container dimensions.
+      document.getElementById('game-container').style.width = newSize + 'px';
+      document.getElementById('game-container').style.height = newSize + 'px';
     }
   </script>
 </body>
