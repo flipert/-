@@ -1,332 +1,1126 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Random Conversations Game</title>
+  <title>Circular Pong</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: monospace; color: #fff; }
-    canvas { display: block; image-rendering: pixelated; }
-    #dialogueBox {
+    :root {
+      --primary-color: #6366f1;
+      --secondary-color: #f43f5e;
+      --dark-bg: #0f172a;
+      --light-bg: #1e293b;
+      --text-color: #f8fafc;
+      --accent-color: #22d3ee;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: var(--dark-bg);
+      color: var(--text-color);
+    }
+    
+    /* Updated game-wrapper to move everything up a bit */
+    .game-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 24px;
       position: absolute;
-      bottom: 10%;
+      top: 30%;
       left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      border: 2px solid #fff;
-      padding: 20px;
-      width: 80%;
-      max-width: 600px;
-      font-size: 14px;
-      line-height: 1.4;
+      transform: translate(-50%, -30%);
     }
-    .dialogue-option {
-      margin-top: 10px;
-      padding: 5px;
-      background: #222;
-      border: 1px solid #fff;
-      cursor: pointer;
+    
+    .game-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-color);
+      text-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+      letter-spacing: 1px;
     }
-    #talkPrompt {
+    
+    .game-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 10px;
+    }
+    
+    .score-display {
+      font-size: 1.5rem;
+      font-weight: 600;
+      background: var(--light-bg);
+      padding: 8px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .score-value {
+      color: var(--accent-color);
+    }
+    
+    .speed-display {
+      font-size: 1rem;
+      background: var(--light-bg);
+      padding: 8px 16px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .speed-indicator {
+      display: flex;
+      gap: 3px;
+    }
+    
+    .speed-bar {
+      width: 6px;
+      height: 16px;
+      background-color: #334155;
+      border-radius: 2px;
+    }
+    
+    .speed-bar.active {
+      background-color: var(--accent-color);
+    }
+    
+    #game-container {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    #game-canvas {
+      background: linear-gradient(135deg, var(--light-bg), var(--dark-bg));
+      border-radius: 50%;
+      box-shadow: 
+        0 0 60px rgba(99, 102, 241, 0.2),
+        0 0 30px rgba(99, 102, 241, 0.1),
+        inset 0 0 20px rgba(0, 0, 0, 0.3);
+      touch-action: none;
+    }
+    
+    .game-info {
+      text-align: center;
+      max-width: 500px;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    
+    #game-over {
       position: absolute;
-      font-size: 12px;
-      background: rgba(0,0,0,0.7);
-      padding: 2px 5px;
-      border: 1px solid #fff;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      display: none;
+      background-color: rgba(15, 23, 42, 0.95);
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(8px);
+      width: 90%;
+      max-width: 400px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    
+    #game-over h2 {
+      font-size: 2.2rem;
+      margin-bottom: 16px;
+      color: var(--primary-color);
+    }
+    
+    #game-over p {
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+    }
+    
+    #final-score {
+      font-weight: 700;
+      font-size: 2.2rem;
+      color: var(--accent-color);
+    }
+    
+    button {
+      background-color: var(--primary-color);
+      border: none;
+      color: white;
+      padding: 14px 36px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      background-color: #4f46e5;
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    @media (max-width: 600px) {
+      .game-wrapper {
+        padding: 16px;
+        top: 30%;
+        transform: translate(-50%, -30%);
+      }
+      
+      .game-title {
+        font-size: 2rem;
+      }
+      
+      #game-container {
+        width: 350px;
+        height: 350px;
+      }
+      
+      .game-controls {
+        flex-direction: row;
+        gap: 0;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .game-info {
+        font-size: 0.8rem;
+      }
+    }
+    
+    /* New styles for the background canvas */
+    #background-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1; /* Behind all other elements */
+    }
+    
+    /* (Optional) Prevent page scroll and pinch/zoom behavior on mobile */
+    html, body {
+      overflow: hidden;
+      touch-action: none;
+    }
+    
+    /* New styles for the play area & slide area */
+    .game-playarea {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    
+    #slide-area {
+      width: 150px;
+      height: 500px; /* same as game container */
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    
+    #slide-area span {
+      color: var(--text-color);
+      font-size: 1.2rem;
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="dialogueBox" style="display:none;"></div>
-  <div id="talkPrompt" style="display:none;">E to talk</div>
+  <!-- New background canvas -->
+  <canvas id="background-canvas"></canvas>
+  
+  <div class="game-wrapper">
+    <div class="game-controls">
+      <div class="score-display">Score: <span class="score-value" id="score">0</span></div>
+      <div class="speed-display">
+        Speed:
+        <div class="speed-indicator" id="speed-indicator">
+          <div class="speed-bar active"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+          <div class="speed-bar"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="game-container">
+      <canvas id="game-canvas" width="500" height="500"></canvas>
+      <div id="game-over">
+        <h2>GAME OVER</h2>
+        <p>Your Score</p>
+        <div id="final-score">0</div>
+        <p>Highest Score: <span id="high-score">0</span></p>
+        <button id="restart-button">Play Again</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Set up canvas and context
-    const canvas = document.getElementById('gameCanvas');
+    // ----- Palette Transition Setup -----
+    const palettes = [
+      {
+        primary: '#6366f1',
+        secondary: '#f43f5e',
+        darkBg: '#0f172a',
+        lightBg: '#1e293b',
+        text: '#f8fafc',
+        accent: '#22d3ee',
+        paddle: '#6366f1',
+        ball: '#f43f5e'
+      },
+      {
+        primary: '#F59E0B',
+        secondary: '#10B981',
+        darkBg: '#1F2937',
+        lightBg: '#374151',
+        text: '#E5E7EB',
+        accent: '#F97316',
+        paddle: '#F59E0B',
+        ball: '#10B981'
+      },
+      {
+        primary: '#9D4EDD',
+        secondary: '#F472B6',
+        darkBg: '#2D2D2D',
+        lightBg: '#3F3F3F',
+        text: '#FFFFFF',
+        accent: '#EE6C4D',
+        paddle: '#9D4EDD',
+        ball: '#F472B6'
+      },
+      {
+        primary: '#4ADE80',
+        secondary: '#60A5FA',
+        darkBg: '#1E293B',
+        lightBg: '#2E4B6E',
+        text: '#F1F5F9',
+        accent: '#FCD34D',
+        paddle: '#4ADE80',
+        ball: '#60A5FA'
+      },
+      {
+        primary: '#EF4444',
+        secondary: '#F59E0B',
+        darkBg: '#111827',
+        lightBg: '#1F2937',
+        text: '#F9FAFB',
+        accent: '#10B981',
+        paddle: '#EF4444',
+        ball: '#F59E0B'
+      }
+    ];
+    
+    let currentPalette = palettes[0];
+    let targetPalette = null;
+    let paletteTransitionStartTime = null;
+    const paletteTransitionDuration = 1000; // milliseconds
+    const paletteKeys = ["primary", "secondary", "darkBg", "lightBg", "text", "accent", "paddle", "ball"];
+    
+    // Helper: convert hex to RGB object
+    function hexToRgb(hex) {
+      hex = hex.replace(/^#/, '');
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      const intVal = parseInt(hex, 16);
+      return {
+        r: (intVal >> 16) & 255,
+        g: (intVal >> 8) & 255,
+        b: intVal & 255
+      };
+    }
+    
+    // Helper: convert RGB object to hex string
+    function rgbToHex({r, g, b}) {
+      return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('');
+    }
+    
+    // Helper: interpolate between two RGB colors
+    function interpolateColor(color1, color2, t) {
+      return {
+        r: Math.round(color1.r + (color2.r - color1.r) * t),
+        g: Math.round(color1.g + (color2.g - color1.g) * t),
+        b: Math.round(color1.b + (color2.b - color1.b) * t)
+      };
+    }
+    
+    // Start palette transition to the next palette
+    let currentPaletteIndex = 0;
+    let lastPaletteSwapScore = 0;
+    function startPaletteTransition() {
+      currentPaletteIndex = (currentPaletteIndex + 1) % palettes.length;
+      targetPalette = palettes[currentPaletteIndex];
+      paletteTransitionStartTime = performance.now();
+    }
+    
+    // Update palette transition (called each frame)
+    function updatePaletteTransition() {
+      if (!targetPalette) return;
+      const now = performance.now();
+      let t = (now - paletteTransitionStartTime) / paletteTransitionDuration;
+      if (t > 1) t = 1;
+      // Interpolate each key and update CSS variables and our drawing globals.
+      paletteKeys.forEach(key => {
+        const currentRGB = hexToRgb(currentPalette[key]);
+        const targetRGB = hexToRgb(targetPalette[key]);
+        const newRGB = interpolateColor(currentRGB, targetRGB, t);
+        const newHex = rgbToHex(newRGB);
+        // Update CSS variable (for keys matching our custom properties)
+        let cssKey = key;
+        if(key === "primary" || key === "secondary" || key === "darkBg" || key === "lightBg" || key === "text" || key === "accent") {
+          cssKey = key + "-color";
+        }
+        document.documentElement.style.setProperty(`--${cssKey}`, newHex);
+        // Update drawing colors for paddle and ball
+        if(key === "paddle") paddleColor = newHex;
+        if(key === "ball") ballColor = newHex;
+      });
+      if (t === 1) {
+        // End transition – set currentPalette to targetPalette and clear target.
+        currentPalette = targetPalette;
+        targetPalette = null;
+      }
+    }
+    
+    // ----- End Palette Transition Setup -----
+    
+    // Canvas and context
+    const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const scoreElement = document.getElementById('score');
+    const gameOverElement = document.getElementById('game-over');
+    const finalScoreElement = document.getElementById('final-score');
+    const restartButton = document.getElementById('restart-button');
+    const speedIndicator = document.getElementById('speed-indicator');
     
-    // Global game state: 'game' or 'dialogue'
-    let gameState = 'game';
+    // Game variables
+    let score = 0;
+    let gameRunning = true;
     
-    // Player object
-    const player = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      size: 16,
-      speed: 2
-    };
+    // Canvas settings (changed from const to let to allow updates on resize)
+    let canvasWidth = canvas.width;
+    let canvasHeight = canvas.height;
+    let centerX = canvasWidth / 2;
+    let centerY = canvasHeight / 2;
+    let paddleRadius = canvasWidth / 2 - 20; // Updated to let so that it scales on resize
+    const ballRadius = 12;
     
-    // Camera for infinite world simulation
-    let camera = { x: 0, y: 0 };
+    // Gap settings
+    let gapSize = 30; // in degrees
+    const minGapSize = 30;
+    const maxGapSize = 330; // Updated maximum gap so that only a small (30°) paddle remains
+    const gapIncrement = 5;
     
-    // Vocabulary: 250 words to be used for generating dialogue.
-    const vocabulary = [
-      "hello", "goodbye", "yes", "no", "maybe", "please", "thanks", "sorry", "welcome", "friend",
-      "enemy", "ally", "stranger", "hero", "villain", "brave", "bold", "cunning", "wise", "curious",
-      "quest", "journey", "adventure", "danger", "challenge", "mystery", "secret", "fate", "destiny", "fortune",
-      "magic", "power", "spell", "curse", "charm", "potion", "elixir", "artifact", "relic", "rune",
-      "sword", "shield", "bow", "arrow", "dagger", "spear", "armor", "battle", "combat", "fight",
-      "win", "lose", "victory", "defeat", "triumph", "struggle", "clash", "duel", "storm", "calm",
-      "light", "dark", "shadow", "flame", "ember", "frost", "wind", "earth", "water", "fire",
-      "sky", "star", "moon", "sun", "dawn", "dusk", "twilight", "horizon", "cloud", "mist",
-      "castle", "dungeon", "forest", "cave", "labyrinth", "tower", "bridge", "gate", "village", "kingdom",
-      "road", "path", "trail", "map", "guide", "sign", "door", "key", "lock", "treasure",
-      "coin", "gold", "silver", "jewel", "gem", "wealth", "trade", "bargain", "offer", "deal",
-      "whisper", "shout", "cry", "laugh", "smile", "frown", "speak", "listen", "voice", "echo",
-      "dream", "nightmare", "vision", "prophecy", "omen", "hint", "riddle", "puzzle", "enigma", "tale",
-      "story", "legend", "myth", "fable", "lore", "history", "memory", "truth", "lie", "promise",
-      "oath", "vow", "mercy", "chance", "risk", "luck", "hope", "fear", "honor", "glory",
-      "the", "a", "an", "and", "but", "or", "if", "then", "when", "where",
-      "who", "what", "why", "how", "with", "without", "in", "on", "at", "by",
-      "for", "from", "of", "is", "are", "was", "were", "be", "been", "being",
-      "do", "does", "did", "have", "has", "had", "will", "would", "can", "could",
-      "shall", "should", "may", "might", "must", "go", "come", "see", "look", "hear",
-      "run", "walk", "chat", "answer", "ask", "say", "tell", "murmur", "explain", "describe",
-      "reveal", "hide", "seek", "explore", "discover", "find", "uncover", "follow", "lead", "return",
-      "begin", "start", "finish", "complete", "create", "build", "break", "mend", "fix", "open",
-      "close", "enter", "exit", "move", "stop", "wait", "hurry", "sprint", "jump", "climb",
-      "fall", "fly", "drive", "guide", "protect", "defend", "attack", "strike", "conquer", "rule"
-    ];
+    // Ball variables (now stored in an array)
+    let balls = [];
+    let baseSpeed = 2.4; // Reduced starting speed by 20%
+    let ballSpeed = baseSpeed;
+    const maxSpeed = 5.44; // 15% slower max speed (15% reduction of 6.4)
+    const speedIncrement = 0.2;
+    const maxRandomAngle = Math.PI / 12; // ±15°
     
-    // Categorized words (subsets from our vocabulary)
-    const greetings = ["hello", "welcome"];
-    const roles = ["friend", "hero", "ally", "villain", "stranger"];
-    const questWords = ["quest", "journey", "adventure", "mystery", "secret", "fate", "destiny", "fortune"];
-    const actionVerbs = ["seek", "find", "explore", "protect", "challenge", "follow", "return", "begin", "start", "finish", "discover", "build", "attack", "conquer", "rule"];
-    const adjectives = ["brave", "bold", "cunning", "wise", "curious", "dark", "light", "calm"];
+    // New globals for slow-motion explosion effect on game over
+    let timeScale = 1;
+    let gameIsOver = false;
     
-    // NPC dialogue templates
-    const npcTemplates = [
-      "{greeting}, {role}. I {verb} a {adjective} {quest}.",
-      "{role}, your {quest} is {adjective} and {adjective2}.",
-      "I {verb} to {verb2} the {quest} of a {role}.",
-      "Do you {verb} the {quest} with a {adjective} {role}?",
-      "This {quest} will {verb} your {role} to {verb2}."
-    ];
+    // Paddle and mouse control
+    let paddleAngle = 0;
+    let mouseAngle = 0;
+    // New variables for vertical touch control
+    let isVerticalTouch = false;
+    let verticalStartY = 0;
+    let verticalStartAngle = 0;
+    let verticalAngle = 0;
     
-    // Player dialogue option templates
-    const playerTemplates = [
-      "Yes, I will {verb} the {quest}.",
-      "No, I {verb} not the {quest}.",
-      "Maybe, I should {verb} and {verb2} the {quest}.",
-      "I {verb} your {quest} and will {verb2}."
-    ];
+    // Powerup variables (only one type now: spawnBalls)
+    let powerups = [];
+    let scheduledPowerupTimeout;
+    let scoreMultiplier = 1; // Default multiplier is 1
     
-    // Helper: choose a random element from an array.
-    function randomChoice(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
+    // Particle effects (unchanged)
+    let particlesArray = [];
+    const particleColor = '#22d3ee';
     
-    // Replace tokens in templates with words from the categorized arrays.
-    function generateSentence(template) {
-      return template.replace(/{(\w+)}/g, (match, token) => {
-        switch(token) {
-          case "greeting": return randomChoice(greetings);
-          case "role": return randomChoice(roles);
-          case "quest": return randomChoice(questWords);
-          case "verb": return randomChoice(actionVerbs);
-          case "verb2": return randomChoice(actionVerbs);
-          case "adjective": return randomChoice(adjectives);
-          case "adjective2": return randomChoice(adjectives);
-          default: return "";
-        }
-      });
-    }
+    // Global drawing colors – initially from currentPalette
+    let paddleColor = currentPalette.paddle;
+    let ballColor = currentPalette.ball;
     
-    // NPC constructor – each NPC gets a randomly generated dialogue.
-    function NPC(x, y) {
-      this.x = x;
-      this.y = y;
-      this.size = 16;
-      this.dialogue = generateSentence(randomChoice(npcTemplates));
-    }
-    
-    // Create an array of NPCs spread across the world.
-    let npcs = [];
-    for(let i = 0; i < 20; i++){
-      let npcX = Math.random() * 2000 - 1000;
-      let npcY = Math.random() * 2000 - 1000;
-      npcs.push(new NPC(npcX, npcY));
-    }
-    
-    // Pickup items (coins, potions, keys)
-    function Pickup(x, y, type) {
-      this.x = x;
-      this.y = y;
-      this.size = 10;
-      this.type = type;
-    }
-    let pickups = [];
-    for(let i = 0; i < 30; i++){
-      let pX = Math.random() * 2000 - 1000;
-      let pY = Math.random() * 2000 - 1000;
-      let types = ["coin", "potion", "key"];
-      pickups.push(new Pickup(pX, pY, randomChoice(types)));
-    }
-    
-    // Enemies – simple red blocks that slowly chase the player.
-    function Enemy(x, y) {
-      this.x = x;
-      this.y = y;
-      this.size = 16;
-      this.speed = 1;
-    }
-    let enemies = [];
-    for(let i = 0; i < 10; i++){
-      let eX = Math.random() * 2000 - 1000;
-      let eY = Math.random() * 2000 - 1000;
-      enemies.push(new Enemy(eX, eY));
-    }
-    
-    // Dialogue box elements
-    const dialogueBox = document.getElementById('dialogueBox');
-    const talkPrompt = document.getElementById('talkPrompt');
-    
-    // Current dialogue state variables
-    let currentNPC = null;
-    let currentDialogueOptions = [];
-    
-    // Keyboard handling
-    let keys = {};
-    window.addEventListener('keydown', function(e) {
-      keys[e.key] = true;
-      if(gameState === 'dialogue' && e.key === "Escape"){
-        endDialogue();
-      }
-      if(gameState === 'game' && e.key.toLowerCase() === 'e' && currentNPC) {
-        startDialogue(currentNPC);
-      }
-    });
-    window.addEventListener('keyup', function(e) {
-      keys[e.key] = false;
+    // Event listener for mouse movement (existing)
+    window.addEventListener('mousemove', function(event) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left - centerX;
+      const mouseY = event.clientY - rect.top - centerY;
+      mouseAngle = Math.atan2(mouseY, mouseX);
     });
     
-    // Begin dialogue mode with the selected NPC.
-    function startDialogue(npc) {
-      gameState = 'dialogue';
-      let npcDialogue = npc.dialogue;
-      currentDialogueOptions = [
-        generateSentence(randomChoice(playerTemplates)),
-        generateSentence(randomChoice(playerTemplates))
-      ];
-      dialogueBox.innerHTML = "<p>" + npcDialogue + "</p>";
-      currentDialogueOptions.forEach(option => {
-        let div = document.createElement("div");
-        div.className = "dialogue-option";
-        div.innerText = option;
-        div.addEventListener('click', function() {
-          // For simplicity, selecting an option ends dialogue and updates NPC dialogue.
-          npc.dialogue = generateSentence(randomChoice(npcTemplates));
-          endDialogue();
-        });
-        dialogueBox.appendChild(div);
-      });
-      dialogueBox.style.display = "block";
-    }
-    
-    // End dialogue mode and return to the game.
-    function endDialogue() {
-      gameState = 'game';
-      dialogueBox.style.display = "none";
-      dialogueBox.innerHTML = "";
-      currentNPC = null;
-    }
-    
-    // Update game objects.
-    function update() {
-      if(gameState === 'game') {
-        if(keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
-        if(keys["ArrowDown"] || keys["s"]) player.y += player.speed;
-        if(keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
-        if(keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+    // NEW: Touch event listeners to support vertical paddle control on mobile.
+    window.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      // If touch starts in the bottom half, enable vertical control.
+      if (touch.clientY > window.innerHeight / 2) {
+        isVerticalTouch = true;
+        verticalStartY = touch.clientY;
+        verticalStartAngle = paddleAngle;  // store current paddle angle as starting point
+        verticalAngle = paddleAngle;
+      } else {
+        isVerticalTouch = false;
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left - centerX;
+        const touchY = touch.clientY - rect.top - centerY;
+        mouseAngle = Math.atan2(touchY, touchX);
       }
-      // Center camera on the player.
-      camera.x = player.x - canvas.width / 2;
-      camera.y = player.y - canvas.height / 2;
-      
-      // Enemies move toward the player.
-      enemies.forEach(enemy => {
-        let dx = player.x - enemy.x;
-        let dy = player.y - enemy.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        if(dist > 0) {
-          enemy.x += (dx/dist) * enemy.speed;
-          enemy.y += (dy/dist) * enemy.speed;
-        }
-      });
-    }
+    }, {passive: false});
     
-    // Check if the player is near an NPC to show the "E to talk" prompt.
-    function checkNPCProximity() {
-      currentNPC = null;
-      npcs.forEach(npc => {
-        let dx = npc.x - player.x;
-        let dy = npc.y - player.y;
-        if(Math.sqrt(dx*dx + dy*dy) < 30) {
-          currentNPC = npc;
-          talkPrompt.style.left = (npc.x - camera.x) + "px";
-          talkPrompt.style.top = (npc.y - camera.y - 20) + "px";
-          talkPrompt.style.display = "block";
-        }
-      });
-      if(!currentNPC) {
-        talkPrompt.style.display = "none";
+    window.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (isVerticalTouch) {
+        // Calculate how far the finger has moved vertically.
+        const deltaY = verticalStartY - touch.clientY;
+        // Map the full height of the bottom half to a full rotation (2π radians).
+        verticalAngle = verticalStartAngle + (deltaY / (window.innerHeight / 2)) * (2 * Math.PI);
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left - centerX;
+        const touchY = touch.clientY - rect.top - centerY;
+        mouseAngle = Math.atan2(touchY, touchX);
       }
-    }
+    }, {passive: false});
     
-    // Draw the game scene.
-    function draw() {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw pickups.
-      pickups.forEach(pickup => {
-        let screenX = pickup.x - camera.x;
-        let screenY = pickup.y - camera.y;
-        if(pickup.type === "coin") ctx.fillStyle = "yellow";
-        else if(pickup.type === "potion") ctx.fillStyle = "blue";
-        else if(pickup.type === "key") ctx.fillStyle = "orange";
-        ctx.fillRect(screenX, screenY, pickup.size, pickup.size);
-      });
-      
-      // Draw enemies.
-      enemies.forEach(enemy => {
-        let screenX = enemy.x - camera.x;
-        let screenY = enemy.y - camera.y;
-        ctx.fillStyle = "red";
-        ctx.fillRect(screenX, screenY, enemy.size, enemy.size);
-      });
-      
-      // Draw NPCs.
-      npcs.forEach(npc => {
-        let screenX = npc.x - camera.x;
-        let screenY = npc.y - camera.y;
-        ctx.fillStyle = "green";
-        ctx.fillRect(screenX, screenY, npc.size, npc.size);
-      });
-      
-      // Draw the player.
-      let playerScreenX = player.x - camera.x;
-      let playerScreenY = player.y - camera.y;
-      ctx.fillStyle = "white";
-      ctx.fillRect(playerScreenX, playerScreenY, player.size, player.size);
-    }
+    window.addEventListener('touchend', function(e) {
+      // When vertical control ends, update mouseAngle so the paddle remains at the last angle.
+      if (isVerticalTouch) {
+         mouseAngle = verticalAngle;
+      }
+      isVerticalTouch = false;
+    });
     
-    // Main game loop.
-    function gameLoop() {
-      update();
-      checkNPCProximity();
-      draw();
+    // Initialize game
+    function initGame() {
+      updateGameSize();
+      
+      score = 0;
+      gapSize = minGapSize;
+      ballSpeed = baseSpeed;
+      gameRunning = true;
+      scoreMultiplier = 1;
+      reverseControl = false;
+      lastPaletteSwapScore = 0;
+      targetPalette = null;
+      
+      // Reset balls array and create the initial ball with a random direction
+      balls = [];
+      const angle = Math.random() * Math.PI * 2;
+      balls.push({
+        x: centerX,
+        y: centerY,
+        speedX: Math.cos(angle) * ballSpeed,
+        speedY: Math.sin(angle) * ballSpeed
+      });
+      
+      // Reset powerups and particles
+      particlesArray = [];
+      powerups = [];
+      
+      updateScore();
+      updateSpeedIndicator();
+      
+      // Hide game over screen and start game loop
+      gameOverElement.style.display = 'none';
       requestAnimationFrame(gameLoop);
     }
-    gameLoop();
     
-    // Adjust canvas on window resize.
-    window.addEventListener('resize', function(){
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    // Main game loop
+    function gameLoop() {
+      if (!gameRunning) return;
+      
+      // Update palette transition if one is in progress
+      updatePaletteTransition();
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      
+      // Update paddle angle based on input controls.
+      if (isVerticalTouch) {
+          paddleAngle = verticalAngle;
+      } else {
+          paddleAngle = reverseControl ? -mouseAngle : mouseAngle;
+      }
+      
+      // Update balls, powerups, particles
+      updateBalls();
+      updatePowerups();
+      updateParticles();
+      
+      // Draw game elements
+      drawPaddle();
+      drawBalls();
+      drawPowerups();
+      drawParticles();
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // Update every ball's position and handle collisions with the paddle
+    function updateBalls() {
+      for (let i = balls.length - 1; i >= 0; i--) {
+        const ball = balls[i];
+        ball.x += ball.speedX;
+        ball.y += ball.speedY;
+        
+        const distFromCenter = Math.sqrt((ball.x - centerX) ** 2 + (ball.y - centerY) ** 2);
+        
+        if (distFromCenter + ballRadius >= paddleRadius) {
+          const ballAngle = Math.atan2(ball.y - centerY, ball.x - centerX);
+          let angleDiff = Math.abs(normalizeAngle(ballAngle - paddleAngle));
+          const halfGapRad = (gapSize / 2) * (Math.PI / 180);
+          
+          if (angleDiff < halfGapRad) {
+            // Ball went through the gap – remove it
+            balls.splice(i, 1);
+          } else {
+            createHitParticles(ball.x, ball.y, 10);
+            // NEW: Trigger background reaction effect at the bounce location.
+            const rect = canvas.getBoundingClientRect();
+            triggerBgReaction(ball.x + rect.left, ball.y + rect.top);
+            
+            const normalX = (ball.x - centerX) / distFromCenter;
+            const normalY = (ball.y - centerY) / distFromCenter;
+            const dotProduct = ball.speedX * normalX + ball.speedY * normalY;
+            
+            let newSpeedX = ball.speedX - 2 * dotProduct * normalX;
+            let newSpeedY = ball.speedY - 2 * dotProduct * normalY;
+            
+            const r1 = Math.random() - 0.5;
+            const r2 = Math.random() - 0.5;
+            const r3 = Math.random() - 0.5;
+            const randomFactor = (r1 + r2 + r3) / 3;
+            const randomAngle = randomFactor * maxRandomAngle;
+            
+            const magnitude = Math.sqrt(newSpeedX**2 + newSpeedY**2);
+            let bounceAngle = Math.atan2(newSpeedY, newSpeedX) + randomAngle;
+            newSpeedX = Math.cos(bounceAngle) * magnitude;
+            newSpeedY = Math.sin(bounceAngle) * magnitude;
+            
+            ball.speedX = newSpeedX;
+            ball.speedY = newSpeedY;
+            
+            // Increase score and update score display
+            score += scoreMultiplier;
+            updateScore();
+            
+            // Every 10 points, swap palette, trigger fireworks, and spawn a random powerup.
+            if (score - lastPaletteSwapScore >= 10) {
+              lastPaletteSwapScore = score;
+              startPaletteTransition();
+              const rect = canvas.getBoundingClientRect();
+              launchFireworks(rect.left + centerX, rect.top + centerY);
+              spawnPowerup();
+            }
+            
+            if (gapSize < maxGapSize) gapSize += gapIncrement;
+            if (ballSpeed < maxSpeed) {
+              ballSpeed += speedIncrement;
+              const currentMagnitude = Math.sqrt(ball.speedX**2 + ball.speedY**2);
+              ball.speedX = (ball.speedX / currentMagnitude) * ballSpeed;
+              ball.speedY = (ball.speedY / currentMagnitude) * ballSpeed;
+              updateSpeedIndicator();
+            }
+          }
+        }
+      }
+      // Game over only when no balls remain
+      if (balls.length === 0) {
+        gameOver();
+      }
+    }
+    
+    // Update powerups: fade them in and check for collision with any ball
+    function updatePowerups() {
+      const now = Date.now();
+      const fadeInDuration = 1000; // milliseconds
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        const powerup = powerups[i];
+        const elapsed = now - powerup.createdAt;
+        powerup.opacity = Math.min(1, elapsed / fadeInDuration);
+        if (elapsed > powerup.lifetime) {
+          powerups.splice(i, 1);
+          continue;
+        }
+        // Check collision with each ball
+        for (let ball of balls) {
+          const dx = ball.x - powerup.x;
+          const dy = ball.y - powerup.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < ballRadius + powerup.radius) {
+            // Burst effect on pickup
+            createHitParticles(powerup.x, powerup.y, 20);
+            applyPowerup(powerup.type);
+            powerups.splice(i, 1);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Draw powerups with fade-in effect
+    function drawPowerups() {
+      for (const p of powerups) {
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        let color, letter;
+        switch(p.type) {
+          case "spawnBalls":
+            color = "#FFD700"; // Gold
+            letter = "B+";
+            break;
+          case "reverseControls":
+            color = "#FF69B4"; // Pink
+            letter = "RC";
+            break;
+          case "speedIncrease":
+            color = "#DC143C"; // Crimson
+            letter = "S+";
+            break;
+          case "narrowGap":
+            color = "#1E90FF"; // Dodger Blue
+            letter = "NG";
+            break;
+          default:
+            color = "#ffffff";
+            letter = "";
+        }
+        ctx.fillStyle = color;
+        ctx.fill();
+        
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(letter, p.x, p.y);
+        ctx.restore();
+      }
+    }
+    
+    // Draw all balls
+    function drawBalls() {
+      for (const ball of balls) {
+        ctx.beginPath();
+        ctx.arc(ball.x + 2, ball.y + 2, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(
+          ball.x - ballRadius / 3, ball.y - ballRadius / 3, 0,
+          ball.x, ball.y, ballRadius
+        );
+        gradient.addColorStop(0, '#ff8fa3');
+        gradient.addColorStop(1, ballColor);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(ball.x - ballRadius / 3, ball.y - ballRadius / 3, ballRadius / 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fill();
+      }
+    }
+    
+    // Particle functions (unchanged)
+    function createHitParticles(x, y, count) {
+      for (let i = 0; i < count; i++) {
+        const speed = Math.random() * 2 + 1;
+        const angle = Math.random() * Math.PI * 2;
+        particlesArray.push({
+          x: x,
+          y: y,
+          size: Math.random() * 3 + 2,
+          speedX: Math.cos(angle) * speed,
+          speedY: Math.sin(angle) * speed,
+          life: 1,
+          decay: Math.random() * 0.05 + 0.02
+        });
+      }
+    }
+    
+    function updateParticles() {
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].x += particlesArray[i].speedX;
+        particlesArray[i].y += particlesArray[i].speedY;
+        particlesArray[i].life -= particlesArray[i].decay;
+        if (particlesArray[i].life <= 0) {
+          particlesArray.splice(i, 1);
+          i--;
+        }
+      }
+    }
+    
+    function drawParticles() {
+      for (const p of particlesArray) {
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = particleColor;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    
+    function updateSpeedIndicator() {
+      const maxBars = 8;
+      let fraction = (ballSpeed - baseSpeed) / (maxSpeed - baseSpeed);
+      // Clamp fraction between 0 and 1, ensuring a reduced ballSpeed shows 0 bars, and not negative values.
+      if (fraction < 0) fraction = 0;
+      if (fraction > 1) fraction = 1;
+      const activeBars = Math.round(fraction * maxBars);
+
+      const bars = speedIndicator.querySelectorAll('.speed-bar');
+      for (let i = 0; i < bars.length; i++) {
+        if (i < activeBars) {
+          bars[i].classList.add('active');
+        } else {
+          bars[i].classList.remove('active');
+        }
+      }
+    }
+    
+    function updateScore() {
+      scoreElement.textContent = score;
+    }
+    
+    // Normalize angle helper (range -π to π)
+    function normalizeAngle(angle) {
+      while (angle > Math.PI) angle -= Math.PI * 2;
+      while (angle < -Math.PI) angle += Math.PI * 2;
+      return angle;
+    }
+    
+    // Draw the paddle as an arc with a visible gap
+    function drawPaddle() {
+      const gapRad = gapSize * Math.PI / 180;
+      const startAngle = paddleAngle + gapRad / 2;
+      const endAngle = startAngle + (2 * Math.PI - gapRad);
+      
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, paddleRadius, startAngle, endAngle, false);
+      ctx.strokeStyle = paddleColor;
+      ctx.lineWidth = 14;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    
+    // Game over screen
+    function gameOver() {
+      gameRunning = false;
+      finalScoreElement.textContent = score;
+      
+      // Update high score using localStorage
+      let storedHighScore = localStorage.getItem("highScore") || 0;
+      storedHighScore = parseInt(storedHighScore, 10);
+      if (score > storedHighScore) {
+        storedHighScore = score;
+        localStorage.setItem("highScore", score);
+      }
+      document.getElementById("high-score").textContent = storedHighScore;
+  
+      gameOverElement.style.display = 'block';
+      if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
+    }
+    
+    restartButton.addEventListener('click', initGame);
+    restartButton.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      initGame();
     });
+    
+    // Update the resize event listener to adjust the game area based on both width and height.
+    window.addEventListener('resize', function() {
+      const prevSize = canvas.width;
+      updateGameSize();
+      // If the size has changed significantly, reinitialize the game.
+      if (Math.abs(prevSize - canvas.width) > 10) {
+        initGame();
+      }
+    });
+    
+    // Start the game
+    initGame();
+    
+    /* ----- Begin Background Animation Code ----- */
+    
+    // Get and resize the background canvas
+    const bgCanvas = document.getElementById('background-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    
+    function resizeBgCanvas() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    }
+    resizeBgCanvas();
+    window.addEventListener('resize', () => {
+      resizeBgCanvas();
+      // Reinitialize background shapes on resize if needed
+      initBgShapes();
+    });
+    
+    // Create an array of shapes for the background animation
+    let bgShapes = [];
+    let bgReactions = [];  // NEW: Holds bounce reaction events for the background
+    let fireworks = [];    // NEW: Holds firework particles
+    
+    function initBgShapes() {
+      bgShapes = [];
+      const count = 10; // Number of shapes
+      for (let i = 0; i < count; i++) {
+        bgShapes.push({
+          x: Math.random() * bgCanvas.width,
+          y: Math.random() * bgCanvas.height,
+          baseRadius: Math.random() * 50 + 50,  // Base radius between 50-100
+          amplitude: Math.random() * 20 + 10,     // Pulsation amplitude
+          phase: Math.random() * Math.PI * 2,     // Random phase
+          driftX: (Math.random() - 0.5) * 0.5,      // Slow drift on X
+          driftY: (Math.random() - 0.5) * 0.5,      // Slow drift on Y
+          hue: Math.random() * 360,            // Starting hue
+          hueSpeed: (Math.random() - 0.5) * 0.2  // Slow hue change
+        });
+      }
+    }
+    initBgShapes();
+
+    // NEW: Function to trigger a background reaction from a ball bounce.
+    function triggerBgReaction(x, y) {
+      bgReactions.push({
+        x: x,
+        y: y,
+        intensity: 30,  // Adjust to control how strong the reaction is based on proximity.
+        startTime: performance.now(),
+        lifetime: 600   // Reaction lasts for 600ms.
+      });
+    }
+    
+    // NEW: Function to launch a firework explosion effect.
+    function launchFireworks(x, y) {
+      const particleCount = 40;
+      for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 3 + 2; // Speed between 2 and 5.
+        fireworks.push({
+          x: x,
+          y: y,
+          speedX: Math.cos(angle) * speed,
+          speedY: Math.sin(angle) * speed,
+          life: 1,
+          decay: Math.random() * 0.02 + 0.01,
+          color: `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`
+        });
+      }
+    }
+    
+    // Animate the background shapes along with reaction and firework effects.
+    function animateBackground(time) {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      // Use lighter composite mode for cool blending effects
+      bgCtx.globalCompositeOperation = 'lighter';
+      
+      // Remove expired background reactions.
+      bgReactions = bgReactions.filter(r => time - r.startTime < r.lifetime);
+      
+      // Draw each background shape with an extra reaction boost if near a bounce.
+      for (let shape of bgShapes) {
+        // Update position and bounce on edges
+        shape.x += shape.driftX;
+        shape.y += shape.driftY;
+        if (shape.x - shape.baseRadius < 0 || shape.x + shape.baseRadius > bgCanvas.width) {
+          shape.driftX *= -1;
+        }
+        if (shape.y - shape.baseRadius < 0 || shape.y + shape.baseRadius > bgCanvas.height) {
+          shape.driftY *= -1;
+        }
+        
+        // Update hue continuously
+        shape.hue = (shape.hue + shape.hueSpeed) % 360;
+        
+        // Calculate pulsating radius.
+        const pulsation = Math.sin(time / 1000 + shape.phase);
+        let radius = shape.baseRadius + pulsation * shape.amplitude;
+        
+        // NEW: Add extra radius based on any active bounce reactions
+        const maxDist = 300;
+        for (let r of bgReactions) {
+          const d = Math.hypot(shape.x - r.x, shape.y - r.y);
+          if (d < maxDist) {
+            const ageFactor = 1 - ((time - r.startTime) / r.lifetime);
+            const effect = r.intensity * (1 - d / maxDist) * ageFactor;
+            radius += effect;
+          }
+        }
+        
+        // Draw the shape with its updated radius.
+        let grad = bgCtx.createRadialGradient(shape.x, shape.y, 0, shape.x, shape.y, radius);
+        grad.addColorStop(0, `hsla(${shape.hue}, 70%, 50%, 0.3)`);
+        grad.addColorStop(1, `hsla(${shape.hue}, 70%, 50%, 0)`);
+        
+        bgCtx.fillStyle = grad;
+        bgCtx.beginPath();
+        bgCtx.arc(shape.x, shape.y, radius, 0, Math.PI * 2);
+        bgCtx.fill();
+      }
+      
+      // NEW: Update and draw firework particles.
+      for (let i = fireworks.length - 1; i >= 0; i--) {
+        const f = fireworks[i];
+        f.x += f.speedX;
+        f.y += f.speedY;
+        f.speedY += 0.05; // Gravity effect.
+        f.life -= f.decay;
+        if (f.life <= 0) {
+          fireworks.splice(i, 1);
+        } else {
+          bgCtx.globalAlpha = f.life;
+          bgCtx.beginPath();
+          bgCtx.arc(f.x, f.y, 3, 0, Math.PI * 2);
+          bgCtx.fillStyle = f.color;
+          bgCtx.fill();
+          bgCtx.globalAlpha = 1;
+        }
+      }
+      
+      // Reset composite mode.
+      bgCtx.globalCompositeOperation = 'source-over';
+      
+      requestAnimationFrame(animateBackground);
+    }
+    
+    requestAnimationFrame(animateBackground);
+    /* ----- End Background Animation Code ----- */
+
+    // Spawn a new powerup at the center with increased size and fade-in
+    function spawnPowerup() {
+      if (powerups.length > 0) return;
+      const powerupTypes = ["spawnBalls", "reverseControls", "speedIncrease", "narrowGap"];
+      const type = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+      const powerup = {
+        x: centerX,
+        y: centerY,
+        type: type,
+        radius: 15 * 1.3, // Increased by 30% (approx 20)
+        opacity: 0,
+        createdAt: Date.now(),
+        lifetime: 7000 // milliseconds
+      };
+      powerups.push(powerup);
+    }
+
+    function applyPowerup(type) {
+      if (type === "spawnBalls") {
+        for (let i = 0; i < 2; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          balls.push({
+            x: centerX,
+            y: centerY,
+            speedX: Math.cos(angle) * baseSpeed, // Start at baseSpeed always
+            speedY: Math.sin(angle) * baseSpeed
+          });
+        }
+      } else if (type === "reverseControls") {
+        reverseControl = true;
+        setTimeout(() => {
+          reverseControl = false;
+        }, 5000);
+      } else if (type === "speedIncrease") {
+        const originalSpeed = ballSpeed;
+        ballSpeed *= 1.5;
+        // Adjust each ball's velocity accordingly.
+        for (let ball of balls) {
+          const magnitude = Math.sqrt(ball.speedX**2 + ball.speedY**2);
+          ball.speedX = (ball.speedX / magnitude) * ballSpeed;
+          ball.speedY = (ball.speedY / magnitude) * ballSpeed;
+        }
+        setTimeout(() => {
+          ballSpeed = originalSpeed;
+          for (let ball of balls) {
+            const magnitude = Math.sqrt(ball.speedX**2 + ball.speedY**2);
+            ball.speedX = (ball.speedX / magnitude) * ballSpeed;
+            ball.speedY = (ball.speedY / magnitude) * ballSpeed;
+          }
+        }, 5000);
+      } else if (type === "narrowGap") {
+        const originalGap = gapSize;
+        gapSize = Math.max(minGapSize / 2, gapSize - 15);
+        setTimeout(() => {
+          gapSize = originalGap;
+        }, 5000);
+      }
+    }
+
+    // ----- New function to handle dynamic game sizing -----
+    function updateGameSize() {
+      const safeHorizontalMargin = 48; // Total safe margin for left+right sides.
+      const safeVerticalMargin = 100;  // Safe area for top and bottom.
+      // Compute the new size: take the minimum of 500, available width, and available height.
+      const newSize = Math.min(500, window.innerWidth - safeHorizontalMargin, window.innerHeight - safeVerticalMargin);
+      
+      canvas.width = newSize;
+      canvas.height = newSize;
+      canvasWidth = newSize;
+      canvasHeight = newSize;
+      centerX = canvasWidth / 2;
+      centerY = canvasHeight / 2;
+      paddleRadius = canvasWidth / 2 - 20; // Recalculate paddle radius accordingly
+      
+      // Also adjust the game container dimensions.
+      document.getElementById('game-container').style.width = newSize + 'px';
+      document.getElementById('game-container').style.height = newSize + 'px';
+    }
   </script>
 </body>
 </html>
