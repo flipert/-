@@ -32,18 +32,17 @@
       color: var(--text-color);
     }
     
-    /* Updated game-wrapper for absolute centering */
+    /* Updated game-wrapper to move everything up a bit */
     .game-wrapper {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 32px;
       padding: 24px;
-      /* New centering properties */
       position: absolute;
-      top: 50%;
+      top: 40%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%, -40%);
     }
     
     .game-title {
@@ -231,6 +230,31 @@
       overflow: hidden;
       touch-action: none;
     }
+    
+    /* New styles for the play area & slide area */
+    .game-playarea {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    
+    #slide-area {
+      width: 150px;
+      height: 500px; /* same as game container */
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 2px dashed var(--accent-color);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    
+    #slide-area span {
+      color: var(--text-color);
+      font-size: 1.2rem;
+    }
   </style>
 </head>
 <body>
@@ -238,12 +262,10 @@
   <canvas id="background-canvas"></canvas>
   
   <div class="game-wrapper">
-    <h1 class="game-title">CIRCULAR PONG</h1>
-    
     <div class="game-controls">
       <div class="score-display">Score: <span class="score-value" id="score">0</span></div>
       <div class="speed-display">
-        Speed: 
+        Speed:
         <div class="speed-indicator" id="speed-indicator">
           <div class="speed-bar active"></div>
           <div class="speed-bar"></div>
@@ -257,14 +279,19 @@
       </div>
     </div>
     
-    <div id="game-container">
-      <canvas id="game-canvas" width="500" height="500"></canvas>
-      <div id="game-over">
-        <h2>GAME OVER</h2>
-        <p>Your Score</p>
-        <div id="final-score">0</div>
-        <p>Highest Score: <span id="high-score">0</span></p>
-        <button id="restart-button">Play Again</button>
+    <div class="game-playarea">
+      <div id="game-container">
+        <canvas id="game-canvas" width="500" height="500"></canvas>
+        <div id="game-over">
+          <h2>GAME OVER</h2>
+          <p>Your Score</p>
+          <div id="final-score">0</div>
+          <p>Highest Score: <span id="high-score">0</span></p>
+          <button id="restart-button">Play Again</button>
+        </div>
+      </div>
+      <div id="slide-area">
+        <span>Slide here</span>
       </div>
     </div>
   </div>
@@ -504,6 +531,35 @@
     window.addEventListener('touchend', function(e) {
       // Reset vertical control flag when touch ends.
       isVerticalTouch = false;
+    });
+    
+    // New variables for slide area control
+    let slideStartX = 0;
+    let initialPaddleAngle = 0;
+    let isSliding = false;
+    
+    // Get the slide area element and add touch event listeners
+    const slideArea = document.getElementById('slide-area');
+    slideArea.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      isSliding = true;
+      slideStartX = e.touches[0].clientX;
+      initialPaddleAngle = paddleAngle;
+    });
+    
+    slideArea.addEventListener('touchmove', function(e) {
+      if (!isSliding) return;
+      e.preventDefault();
+      let currentX = e.touches[0].clientX;
+      let dx = currentX - slideStartX;
+      let areaWidth = slideArea.clientWidth;
+      // Moving across the entire slide area (width) rotates the paddle full 360° (2π radians)
+      let angleDelta = (dx / areaWidth) * (2 * Math.PI);
+      paddleAngle = initialPaddleAngle + angleDelta;
+    });
+    
+    slideArea.addEventListener('touchend', function(e) {
+      isSliding = false;
     });
     
     // Initialize game
