@@ -40,9 +40,9 @@
       gap: 32px;
       padding: 24px;
       position: absolute;
-      top: 40%;
+      top: 35%;
       left: 50%;
-      transform: translate(-50%, -40%);
+      transform: translate(-50%, -35%);
     }
     
     .game-title {
@@ -57,6 +57,7 @@
     .game-controls {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       width: 100%;
       max-width: 500px;
       margin-bottom: 10px;
@@ -279,19 +280,14 @@
       </div>
     </div>
     
-    <div class="game-playarea">
-      <div id="game-container">
-        <canvas id="game-canvas" width="500" height="500"></canvas>
-        <div id="game-over">
-          <h2>GAME OVER</h2>
-          <p>Your Score</p>
-          <div id="final-score">0</div>
-          <p>Highest Score: <span id="high-score">0</span></p>
-          <button id="restart-button">Play Again</button>
-        </div>
-      </div>
-      <div id="slide-area">
-        <span>Slide here</span>
+    <div id="game-container">
+      <canvas id="game-canvas" width="500" height="500"></canvas>
+      <div id="game-over">
+        <h2>GAME OVER</h2>
+        <p>Your Score</p>
+        <div id="final-score">0</div>
+        <p>Highest Score: <span id="high-score">0</span></p>
+        <button id="restart-button">Play Again</button>
       </div>
     </div>
   </div>
@@ -531,35 +527,6 @@
     window.addEventListener('touchend', function(e) {
       // Reset vertical control flag when touch ends.
       isVerticalTouch = false;
-    });
-    
-    // New variables for slide area control
-    let slideStartX = 0;
-    let initialPaddleAngle = 0;
-    let isSliding = false;
-    
-    // Get the slide area element and add touch event listeners
-    const slideArea = document.getElementById('slide-area');
-    slideArea.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      isSliding = true;
-      slideStartX = e.touches[0].clientX;
-      initialPaddleAngle = paddleAngle;
-    });
-    
-    slideArea.addEventListener('touchmove', function(e) {
-      if (!isSliding) return;
-      e.preventDefault();
-      let currentX = e.touches[0].clientX;
-      let dx = currentX - slideStartX;
-      let areaWidth = slideArea.clientWidth;
-      // Moving across the entire slide area (width) rotates the paddle full 360° (2π radians)
-      let angleDelta = (dx / areaWidth) * (2 * Math.PI);
-      paddleAngle = initialPaddleAngle + angleDelta;
-    });
-    
-    slideArea.addEventListener('touchend', function(e) {
-      isSliding = false;
     });
     
     // Initialize game
