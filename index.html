@@ -113,6 +113,7 @@
         0 0 60px rgba(99, 102, 241, 0.2),
         0 0 30px rgba(99, 102, 241, 0.1),
         inset 0 0 20px rgba(0, 0, 0, 0.3);
+      touch-action: none;
     }
     
     .game-info {
@@ -217,6 +218,12 @@
       width: 100%;
       height: 100%;
       z-index: -1; /* Behind all other elements */
+    }
+    
+    /* (Optional) Prevent page scroll and pinch/zoom behavior on mobile */
+    html, body {
+      overflow: hidden;
+      touch-action: none;
     }
   </style>
 </head>
@@ -401,11 +408,11 @@
     let score = 0;
     let gameRunning = true;
     
-    // Canvas settings
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    const centerX = canvasWidth / 2;
-    const centerY = canvasHeight / 2;
+    // Canvas settings (changed from const to let to allow updates on resize)
+    let canvasWidth = canvas.width;
+    let canvasHeight = canvas.height;
+    let centerX = canvasWidth / 2;
+    let centerY = canvasHeight / 2;
     const paddleRadius = canvasWidth / 2 - 20; // Paddle drawn as an arc with a gap
     const ballRadius = 12;
     let gapSize = 30; // in degrees
@@ -446,13 +453,32 @@
     let paddleColor = currentPalette.paddle;
     let ballColor = currentPalette.ball;
     
-    // Event listener for mouse movement (now attached to the window)
+    // Event listener for mouse movement (existing)
     window.addEventListener('mousemove', function(event) {
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left - centerX;
       const mouseY = event.clientY - rect.top - centerY;
       mouseAngle = Math.atan2(mouseY, mouseX);
     });
+    
+    // NEW: Touch event listeners to support mobile controls:
+    window.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left - centerX;
+      const touchY = touch.clientY - rect.top - centerY;
+      mouseAngle = Math.atan2(touchY, touchX);
+    }, {passive: false});
+    
+    window.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left - centerX;
+      const touchY = touch.clientY - rect.top - centerY;
+      mouseAngle = Math.atan2(touchY, touchX);
+    }, {passive: false});
     
     // Initialize game
     function initGame() {
@@ -797,11 +823,16 @@
     
     restartButton.addEventListener('click', initGame);
     
+    // Update the resize event listener to update canvas dimensions and center coordinates.
     window.addEventListener('resize', function() {
       const newWidth = Math.min(500, window.innerWidth - 48);
       if (Math.abs(canvas.width - newWidth) > 50) {
         canvas.width = newWidth;
         canvas.height = newWidth;
+        canvasWidth = newWidth;          // Update new width
+        canvasHeight = newWidth;         // Update new height
+        centerX = canvasWidth / 2;       // Update center X
+        centerY = canvasHeight / 2;      // Update center Y
         initGame();
       }
     });
