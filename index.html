@@ -27,7 +27,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
       background-color: var(--dark-bg);
       color: var(--text-color);
     }
@@ -413,7 +413,7 @@
     let canvasHeight = canvas.height;
     let centerX = canvasWidth / 2;
     let centerY = canvasHeight / 2;
-    const paddleRadius = canvasWidth / 2 - 20; // Paddle drawn as an arc with a gap
+    let paddleRadius = canvasWidth / 2 - 20; // Updated to let so that it scales on resize
     const ballRadius = 12;
     let gapSize = 30; // in degrees
     const minGapSize = 30;
@@ -1151,6 +1151,7 @@
       canvasHeight = newSize;
       centerX = canvasWidth / 2;
       centerY = canvasHeight / 2;
+      paddleRadius = canvasWidth / 2 - 20; // Recalculate paddle radius accordingly
       
       // Also adjust the game container dimensions.
       document.getElementById('game-container').style.width = newSize + 'px';
