@@ -32,12 +32,18 @@
       color: var(--text-color);
     }
     
+    /* Updated game-wrapper for absolute centering */
     .game-wrapper {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 32px;
       padding: 24px;
+      /* New centering properties */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
     
     .game-title {
@@ -415,35 +421,34 @@
     let centerY = canvasHeight / 2;
     let paddleRadius = canvasWidth / 2 - 20; // Updated to let so that it scales on resize
     const ballRadius = 12;
+    
+    // Gap settings
     let gapSize = 30; // in degrees
     const minGapSize = 30;
-    const maxGapSize = 120;
+    const maxGapSize = 330; // Updated maximum gap so that only a small (30°) paddle remains
     const gapIncrement = 5;
     
     // Ball variables (now stored in an array)
     let balls = [];
-    let baseSpeed = 3;
+    let baseSpeed = 2.4; // Reduced starting speed by 20%
     let ballSpeed = baseSpeed;
-    const maxSpeed = 8;
+    const maxSpeed = 6.4; // Reduced final speed by 20%
     const speedIncrement = 0.2;
     const maxRandomAngle = Math.PI / 12; // ±15°
     
     // Paddle and mouse control
     let paddleAngle = 0;
     let mouseAngle = 0;
-    // Variables for enemy-forced gap control
-    let forcedPaddleAngle = null;
-    let forcedPaddleTimeout = null;
-    let reverseControl = false;
+    // New variables for vertical touch control
+    let isVerticalTouch = false;
+    let verticalStartY = 0;
+    let verticalStartAngle = 0;
+    let verticalAngle = 0;
     
     // Powerup variables (only one type now: spawnBalls)
     let powerups = [];
     let scheduledPowerupTimeout;
     let scoreMultiplier = 1; // Default multiplier is 1
-    
-    // NEW: Enemy variables
-    let enemies = [];
-    let enemySpawnInterval;
     
     // Particle effects (unchanged)
     let particlesArray = [];
@@ -461,24 +466,45 @@
       mouseAngle = Math.atan2(mouseY, mouseX);
     });
     
-    // NEW: Touch event listeners to support mobile controls:
+    // NEW: Touch event listeners to support vertical paddle control on mobile.
     window.addEventListener('touchstart', function(e) {
       e.preventDefault();
       const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const touchX = touch.clientX - rect.left - centerX;
-      const touchY = touch.clientY - rect.top - centerY;
-      mouseAngle = Math.atan2(touchY, touchX);
+      // If touch starts in the bottom half, enable vertical control.
+      if (touch.clientY > window.innerHeight / 2) {
+        isVerticalTouch = true;
+        verticalStartY = touch.clientY;
+        verticalStartAngle = paddleAngle;  // store current paddle angle as starting point
+        verticalAngle = paddleAngle;
+      } else {
+        isVerticalTouch = false;
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left - centerX;
+        const touchY = touch.clientY - rect.top - centerY;
+        mouseAngle = Math.atan2(touchY, touchX);
+      }
     }, {passive: false});
     
     window.addEventListener('touchmove', function(e) {
       e.preventDefault();
       const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const touchX = touch.clientX - rect.left - centerX;
-      const touchY = touch.clientY - rect.top - centerY;
-      mouseAngle = Math.atan2(touchY, touchX);
+      if (isVerticalTouch) {
+        // Calculate how far the finger has moved vertically.
+        const deltaY = verticalStartY - touch.clientY;
+        // Map the full height of the bottom half to a full rotation (2π radians).
+        verticalAngle = verticalStartAngle + (deltaY / (window.innerHeight / 2)) * (2 * Math.PI);
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left - centerX;
+        const touchY = touch.clientY - rect.top - centerY;
+        mouseAngle = Math.atan2(touchY, touchX);
+      }
     }, {passive: false});
+    
+    window.addEventListener('touchend', function(e) {
+      // Reset vertical control flag when touch ends.
+      isVerticalTouch = false;
+    });
     
     // Initialize game
     function initGame() {
@@ -507,10 +533,6 @@
       particlesArray = [];
       powerups = [];
       
-      // NEW: Reset enemies and start enemy spawn interval (spawn every 8 seconds)
-      enemies = [];
-      enemySpawnInterval = setInterval(() => { if (gameRunning) spawnEnemy(); }, 8000);
-      
       updateScore();
       updateSpeedIndicator();
       
@@ -529,9 +551,9 @@
       // Clear canvas
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       
-      // Update paddle angle based on forced value or mouse movement
-      if (forcedPaddleAngle !== null) {
-          paddleAngle = forcedPaddleAngle;
+      // Update paddle angle based on input controls.
+      if (isVerticalTouch) {
+          paddleAngle = verticalAngle;
       } else {
           paddleAngle = reverseControl ? -mouseAngle : mouseAngle;
       }
@@ -540,16 +562,12 @@
       updateBalls();
       updatePowerups();
       updateParticles();
-      // NEW: Update enemies
-      updateEnemies();
       
       // Draw game elements
       drawPaddle();
       drawBalls();
       drawPowerups();
       drawParticles();
-      // NEW: Draw enemies
-      drawEnemies();
       
       requestAnimationFrame(gameLoop);
     }
@@ -814,11 +832,9 @@
         localStorage.setItem("highScore", score);
       }
       document.getElementById("high-score").textContent = storedHighScore;
-
+  
       gameOverElement.style.display = 'block';
       if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
-      // NEW: Clear enemy spawn interval
-      if (enemySpawnInterval) clearInterval(enemySpawnInterval);
     }
     
     restartButton.addEventListener('click', initGame);
@@ -994,7 +1010,7 @@
         x: centerX,
         y: centerY,
         type: type,
-        radius: 15,
+        radius: 15 * 1.3, // Increased by 30% (approx 20)
         opacity: 0,
         createdAt: Date.now(),
         lifetime: 7000 // milliseconds
@@ -1041,100 +1057,6 @@
         setTimeout(() => {
           gapSize = originalGap;
         }, 5000);
-      }
-    }
-
-    // NEW: Spawn a new enemy inside the circle.
-    function spawnEnemy() {
-      // Spawn enemy near the centre within a circle of radius between 30 and 80.
-      const spawnRadius = 30 + Math.random() * 50; // between 30 and 80 pixels from center
-      const enemyAngle = Math.random() * Math.PI * 2;
-      const x = centerX + spawnRadius * Math.cos(enemyAngle);
-      const y = centerY + spawnRadius * Math.sin(enemyAngle);
-      const size = Math.random() * 10 + 10; // radius between 10-20 pixels
-      const speed = Math.random() * 1.5 + 0.5; // enemy speed
-      enemies.push({
-        x: x,
-        y: y,
-        size: size,
-        speed: speed,  // store scalar speed
-        speedX: 0,     // will be recalculated in updateEnemies
-        speedY: 0
-      });
-    }
-    
-    // NEW: Update enemies' positions and check for collisions with balls and the paddle.
-    function updateEnemies() {
-      for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        // Recalculate velocity so that the enemy always aims for a non-gap area of the paddle.
-        const enemyTargetAngle = normalizeAngle(paddleAngle + Math.PI);
-        const targetX = centerX + paddleRadius * Math.cos(enemyTargetAngle);
-        const targetY = centerY + paddleRadius * Math.sin(enemyTargetAngle);
-        let dx = targetX - enemy.x;
-        let dy = targetY - enemy.y;
-        let dist = Math.hypot(dx, dy);
-        if (dist === 0) dist = 1;
-        const normX = dx / dist;
-        const normY = dy / dist;
-        enemy.speedX = normX * enemy.speed;
-        enemy.speedY = normY * enemy.speed;
-        
-        enemy.x += enemy.speedX;
-        enemy.y += enemy.speedY;
-        
-        // Check if enemy has reached (or surpassed) the paddle boundary.
-        const enemyDistFromCenter = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-        if (enemyDistFromCenter + enemy.size >= paddleRadius) {
-          // Determine enemy's angular position relative to the center.
-          const enemyAngle = Math.atan2(enemy.y - centerY, enemy.x - centerX);
-          const diffAngle = Math.abs(normalizeAngle(enemyAngle - paddleAngle));
-          const halfGapRad = (gapSize / 2) * (Math.PI / 180);
-          if (diffAngle > halfGapRad) {
-            // Enemy reached the paddle outside the safe gap: force new gap at the enemy's impact.
-            createHitParticles(enemy.x, enemy.y, 20);
-            forcedPaddleAngle = normalizeAngle(enemyAngle);
-            clearTimeout(forcedPaddleTimeout);
-            forcedPaddleTimeout = setTimeout(() => {
-                forcedPaddleAngle = null;
-            }, 2000);
-            enemies.splice(i, 1);
-            continue;
-          } else {
-            // Enemy reached the safe gap area—remove it so it doesn't cause a threat.
-            enemies.splice(i, 1);
-            continue;
-          }
-        }
-        
-        // Check collision between enemy and balls.
-        for (let j = 0; j < balls.length; j++) {
-          const ball = balls[j];
-          const dx_ball = ball.x - enemy.x;
-          const dy_ball = ball.y - enemy.y;
-          const distBallEnemy = Math.hypot(dx_ball, dy_ball);
-          if (distBallEnemy < enemy.size + ballRadius) {
-            createHitParticles(enemy.x, enemy.y, 20);
-            const boost = 1.3;
-            const mag = Math.hypot(ball.speedX, ball.speedY);
-            ball.speedX = (ball.speedX / mag) * ballSpeed * boost;
-            ball.speedY = (ball.speedY / mag) * ballSpeed * boost;
-            enemies.splice(i, 1);
-            break;
-          }
-        }
-      }
-    }
-
-    // NEW: Draw enemies on the game canvas.
-    function drawEnemies() {
-      for (const enemy of enemies) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(enemy.x, enemy.y, enemy.size, 0, Math.PI * 2);
-        ctx.fillStyle = "#AA0000"; // Enemy color (red)
-        ctx.fill();
-        ctx.restore();
       }
     }
 
