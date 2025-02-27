@@ -462,6 +462,10 @@
     const speedIncrement = 0.2;
     const maxRandomAngle = Math.PI / 12; // ±15°
     
+    // New globals for slow-motion explosion effect on game over
+    let timeScale = 1;
+    let gameIsOver = false;
+    
     // Paddle and mouse control
     let paddleAngle = 0;
     let mouseAngle = 0;
@@ -605,8 +609,8 @@
     function updateBalls() {
       for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i];
-        ball.x += ball.speedX;
-        ball.y += ball.speedY;
+        ball.x += ball.speedX * timeScale;
+        ball.y += ball.speedY * timeScale;
         
         const distFromCenter = Math.sqrt((ball.x - centerX) ** 2 + (ball.y - centerY) ** 2);
         
@@ -855,20 +859,39 @@
     
     // Game over screen
     function gameOver() {
-      gameRunning = false;
-      finalScoreElement.textContent = score;
+      if (gameIsOver) return;
+      gameIsOver = true;
       
-      // Update high score using localStorage
-      let storedHighScore = localStorage.getItem("highScore") || 0;
-      storedHighScore = parseInt(storedHighScore, 10);
-      if (score > storedHighScore) {
-        storedHighScore = score;
-        localStorage.setItem("highScore", score);
+      // Trigger explosion effect for each ball or at the center if no ball remains.
+      if (balls.length > 0) {
+        for (let ball of balls) {
+          createHitParticles(ball.x, ball.y, 30);
+        }
+      } else {
+        createHitParticles(centerX, centerY, 30);
       }
-      document.getElementById("high-score").textContent = storedHighScore;
+      
+      // Apply slow-motion effect by reducing the time scale.
+      timeScale = 0.2;
+      
+      // Delay finalizing game over to allow slow-mo explosion effect to be visible.
+      setTimeout(() => {
+        finalScoreElement.textContent = score;
+        let storedHighScore = localStorage.getItem("highScore") || 0;
+        storedHighScore = parseInt(storedHighScore, 10);
+        if (score > storedHighScore) {
+          storedHighScore = score;
+          localStorage.setItem("highScore", score);
+        }
+        document.getElementById("high-score").textContent = storedHighScore;
   
-      gameOverElement.style.display = 'block';
-      if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
+        gameOverElement.style.display = 'block';
+        if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
+  
+        // Reset time scale before stopping the game loop.
+        timeScale = 1;
+        gameRunning = false;
+      }, 2000);
     }
     
     restartButton.addEventListener('click', initGame);
