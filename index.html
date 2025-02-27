@@ -609,8 +609,8 @@
     function updateBalls() {
       for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i];
-        ball.x += ball.speedX * timeScale;
-        ball.y += ball.speedY * timeScale;
+        ball.x += ball.speedX;
+        ball.y += ball.speedY;
         
         const distFromCenter = Math.sqrt((ball.x - centerX) ** 2 + (ball.y - centerY) ** 2);
         
@@ -859,39 +859,20 @@
     
     // Game over screen
     function gameOver() {
-      if (gameIsOver) return;
-      gameIsOver = true;
+      gameRunning = false;
+      finalScoreElement.textContent = score;
       
-      // Trigger explosion effect for each ball or at the center if no ball remains.
-      if (balls.length > 0) {
-        for (let ball of balls) {
-          createHitParticles(ball.x, ball.y, 30);
-        }
-      } else {
-        createHitParticles(centerX, centerY, 30);
+      // Update high score using localStorage
+      let storedHighScore = localStorage.getItem("highScore") || 0;
+      storedHighScore = parseInt(storedHighScore, 10);
+      if (score > storedHighScore) {
+        storedHighScore = score;
+        localStorage.setItem("highScore", score);
       }
-      
-      // Apply slow-motion effect by reducing the time scale.
-      timeScale = 0.2;
-      
-      // Delay finalizing game over to allow slow-mo explosion effect to be visible.
-      setTimeout(() => {
-        finalScoreElement.textContent = score;
-        let storedHighScore = localStorage.getItem("highScore") || 0;
-        storedHighScore = parseInt(storedHighScore, 10);
-        if (score > storedHighScore) {
-          storedHighScore = score;
-          localStorage.setItem("highScore", score);
-        }
-        document.getElementById("high-score").textContent = storedHighScore;
+      document.getElementById("high-score").textContent = storedHighScore;
   
-        gameOverElement.style.display = 'block';
-        if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
-  
-        // Reset time scale before stopping the game loop.
-        timeScale = 1;
-        gameRunning = false;
-      }, 2000);
+      gameOverElement.style.display = 'block';
+      if (scheduledPowerupTimeout) clearTimeout(scheduledPowerupTimeout);
     }
     
     restartButton.addEventListener('click', initGame);
